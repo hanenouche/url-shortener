@@ -1,16 +1,25 @@
-# React + Vite
+# URL Shortener
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A small client-side URL shortener built with React and Vite.
 
-Currently, two official plugins are available:
+## Run it
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev      # app on http://localhost:5173
+npm test         # unit tests
+```
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Shorten a long URL and get a short link like `/#/aB3xY9k`
+- Retrieve the original URL from a code or a full short link
+- Opening a short link redirects to the original URL
+- Optional expiration (1, 7 or 30 days)
+- Click counter per link
+- Links persist in localStorage
+- Light/dark mode, responsive layout
 
-## Expanding the ESLint configuration
+## Stack
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+React 19, Vite, Vitest for the unit tests, lucide-react for icons. Core logic lives in `src/lib/shortener.js`, framework-free.
