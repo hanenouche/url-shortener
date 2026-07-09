@@ -1,122 +1,63 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { Link2, Moon, Sun } from 'lucide-react'
+import ShortenForm from '@/components/ShortenForm.jsx'
+import RetrieveForm from '@/components/RetrieveForm.jsx'
+import LinksTable from '@/components/LinksTable.jsx'
+import RedirectPage from '@/components/RedirectPage.jsx'
+import { useHashCode } from '@/hooks/useHashRoute.js'
+import { useTheme } from '@/hooks/useTheme.js'
+import { getAll } from '@/lib/shortener.js'
+import '@/App.css'
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [links, setLinks] = useState(() => getAll())
+  const redirectCode = useHashCode()
+  const { theme, toggle } = useTheme()
+
+  const refresh = () => setLinks(getAll())
+
+  if (redirectCode) return <RedirectPage code={redirectCode} />
+
+  const themeLabel =
+    theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
+    <main className="app">
+      <header>
+        <div className="brand">
+          <span className="logo-badge">
+            <Link2 size={22} />
+          </span>
+          <div>
+            <h1>URL Shortener</h1>
+            <p className="tagline">
+              Paste a long link and get a short one, with click stats and
+              optional expiration.
+            </p>
+          </div>
         </div>
         <button
           type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+          className="ghost icon"
+          onClick={toggle}
+          title={themeLabel}
+          aria-label={themeLabel}
         >
-          Count is {count}
+          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
-      </section>
+      </header>
 
-      <div className="ticks"></div>
+      <div className="panels">
+        <ShortenForm onChange={refresh} />
+        <RetrieveForm onChange={refresh} />
+      </div>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      <LinksTable links={links} onChange={refresh} />
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      <footer>
+        Links are stored locally in your browser (localStorage), no server
+        involved.
+      </footer>
+    </main>
   )
 }
-
-export default App
