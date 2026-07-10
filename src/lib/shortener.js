@@ -1,8 +1,20 @@
 // Core shortener logic, no React in here so it stays easy to unit test.
-//
-// localStorage shape, keyed by code:
-// { "aB3xY9k": { code, longUrl, createdAt, expiresAt, clicks, lastAccessedAt } }
-// expiresAt is null when the link never expires.
+// Everything persists to localStorage under one key, shaped as
+// Record<code, LinkEntry>.
+
+/**
+ * @typedef {Object} LinkEntry
+ * @property {string} code
+ * @property {string} longUrl
+ * @property {number} createdAt epoch ms
+ * @property {number | null} expiresAt epoch ms, null = never expires
+ * @property {number} clicks
+ * @property {number | null} lastAccessedAt
+ */
+
+/** @typedef {LinkEntry & { expired: boolean }} LinkEntryWithStatus */
+
+/** @typedef {keyof typeof ERRORS} ErrorCode */
 
 const STORAGE_KEY = 'url-shortener:links'
 const ALPHABET =
@@ -11,13 +23,17 @@ const CODE_LENGTH = 7
 const MAX_COLLISION_RETRIES = 5
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
-export const ERRORS = {
+export const ERRORS = /** @type {const} */ ({
   INVALID_URL: 'INVALID_URL',
   NOT_FOUND: 'NOT_FOUND',
   EXPIRED: 'EXPIRED',
-}
+})
 
 export class ShortenerError extends Error {
+  /**
+   * @param {ErrorCode} code
+   * @param {string} message
+   */
   constructor(code, message) {
     super(message)
     this.name = 'ShortenerError'
@@ -27,21 +43,27 @@ export class ShortenerError extends Error {
 
 // storage helpers
 
+/** @returns {Record<string, LinkEntry>} */
 function load() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? {}
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') ?? {}
   } catch {
     // corrupted storage shouldn't crash the app
     return {}
   }
 }
 
+/** @param {Record<string, LinkEntry>} store */
 function save(store) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store))
 }
 
-// random base62, crypto source so codes aren't guessable like sequential ids.
-// bytes >= 248 are dropped to keep the distribution uniform (256 % 62 != 0)
+/**
+ * Random base62, crypto source so codes aren't guessable like sequential ids.
+ * Bytes >= 248 are dropped to keep the distribution uniform (256 % 62 != 0).
+ * @param {number} [length]
+ * @returns {string}
+ */
 function generateCode(length = CODE_LENGTH) {
   const limit = 256 - (256 % ALPHABET.length) // 248
   let code = ''
@@ -56,6 +78,10 @@ function generateCode(length = CODE_LENGTH) {
   return code
 }
 
+/**
+ * @param {string} input
+ * @returns {string} absolute http(s) href
+ */
 function normalizeUrl(input) {
   const raw = String(input ?? '').trim()
   if (!raw) {
@@ -91,7 +117,11 @@ function normalizeUrl(input) {
   return url.href
 }
 
-// accepts "aB3xY9k", "#/aB3xY9k" or a full short URL
+/**
+ * Accepts "aB3xY9k", "#/aB3xY9k" or a full short URL.
+ * @param {string} input
+ * @returns {string | null}
+ */
 export function extractCode(input) {
   const raw = String(input ?? '').trim()
   if (!raw) return null
@@ -105,11 +135,17 @@ export function extractCode(input) {
   return segmentMatch ? segmentMatch[1] : null
 }
 
+/** @param {LinkEntry} entry */
 function isExpired(entry) {
   return entry.expiresAt !== null && Date.now() > entry.expiresAt
 }
 
-// same long URL returns its existing code instead of a new one
+/**
+ * Same long URL returns its existing code instead of a new one.
+ * @param {string} input
+ * @param {{ expiresInDays?: number | null }} [options]
+ * @returns {LinkEntry & { reused: boolean }}
+ */
 export function shorten(input, { expiresInDays = null } = {}) {
   const longUrl = normalizeUrl(input)
   const store = load()
@@ -152,7 +188,11 @@ export function shorten(input, { expiresInDays = null } = {}) {
   return { ...entry, reused: false }
 }
 
-// counts as an access (clicks + 1)
+/**
+ * Counts as an access (clicks + 1).
+ * @param {string} input code, "#/code" or full short URL
+ * @returns {LinkEntry}
+ */
 export function resolve(input) {
   const code = extractCode(input)
   if (!code) {
@@ -170,7 +210,7 @@ export function resolve(input) {
   if (isExpired(entry)) {
     throw new ShortenerError(
       ERRORS.EXPIRED,
-      `This link expired on ${new Date(entry.expiresAt).toLocaleString()}.`,
+      `This link expired on ${new Date(entry.expiresAt ?? 0).toLocaleString()}.`,
     )
   }
 
@@ -180,7 +220,11 @@ export function resolve(input) {
   return { ...entry }
 }
 
-// read-only, does not count an access
+/**
+ * Read-only, does not count an access.
+ * @param {string} input
+ * @returns {LinkEntryWithStatus}
+ */
 export function getStats(input) {
   const code = extractCode(input)
   if (!code) {
@@ -197,13 +241,17 @@ export function getStats(input) {
   return { ...entry, expired: isExpired(entry) }
 }
 
-// newest first
+/**
+ * Newest first.
+ * @returns {LinkEntryWithStatus[]}
+ */
 export function getAll() {
   return Object.values(load())
     .sort((a, b) => b.createdAt - a.createdAt)
     .map((entry) => ({ ...entry, expired: isExpired(entry) }))
 }
 
+/** @param {string} code */
 export function remove(code) {
   const store = load()
   delete store[code]
@@ -219,16 +267,24 @@ export function removeExpired() {
   save(store)
 }
 
-// hash based so it also works on static hosting
+/**
+ * Hash based so it also works on static hosting.
+ * @param {string} code
+ * @returns {string}
+ */
 export function buildShortUrl(code) {
   const { origin, pathname } = window.location
   return `${origin}${pathname}#/${code}`
 }
 
-// storage events only fire in OTHER tabs, so this is cross-tab sync.
-// key === null means localStorage.clear()
+/**
+ * Storage events only fire in OTHER tabs, so this is cross-tab sync.
+ * A null key means localStorage.clear().
+ * @param {() => void} callback
+ * @returns {() => void} unsubscribe
+ */
 export function onExternalChange(callback) {
-  const handler = (event) => {
+  const handler = /** @param {StorageEvent} event */ (event) => {
     if (event.key === STORAGE_KEY || event.key === null) callback()
   }
   window.addEventListener('storage', handler)
