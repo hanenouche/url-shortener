@@ -16,6 +16,7 @@ export default function RedirectPage({ code }) {
       const entry = resolve(code)
       window.location.replace(entry.longUrl)
     } catch (err) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- the redirect is a side effect that can fail, the error has to land in state
       setError(err.message)
     }
   }, [code])
