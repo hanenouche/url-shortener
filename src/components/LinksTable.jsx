@@ -1,5 +1,5 @@
 import { Link2, Trash2 } from 'lucide-react'
-import { buildShortUrl, remove } from '@/lib/shortener.js'
+import { buildShortUrl, remove, removeExpired } from '@/lib/shortener.js'
 import CopyButton from '@/components/CopyButton.jsx'
 
 function formatDate(timestamp) {
@@ -26,9 +26,24 @@ export default function LinksTable({ links, onChange }) {
     onChange()
   }
 
+  function handleClearExpired() {
+    removeExpired()
+    onChange()
+  }
+
+  const hasExpired = links.some((link) => link.expired)
+
   return (
     <section>
-      <h2>Your links</h2>
+      <div className="table-head">
+        <h2>Your links</h2>
+        {hasExpired && (
+          <button type="button" className="ghost" onClick={handleClearExpired}>
+            <Trash2 size={14} />
+            Clear expired
+          </button>
+        )}
+      </div>
       <div className="table-wrap">
         <table>
           <thead>

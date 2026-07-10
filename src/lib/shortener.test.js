@@ -5,6 +5,7 @@ import {
   getStats,
   getAll,
   remove,
+  removeExpired,
   extractCode,
   buildShortUrl,
   onExternalChange,
@@ -176,6 +177,17 @@ describe('remove', () => {
     const { code } = shorten('https://example.com/gone')
     remove(code)
     expect(() => resolve(code)).toThrowError(ShortenerError)
+  })
+})
+
+describe('removeExpired', () => {
+  it('purges expired entries and keeps live ones', () => {
+    const live = shorten('https://example.com/live')
+    const dead = shorten('https://example.com/dead', { expiresInDays: -1 })
+    removeExpired()
+    const codes = getAll().map((entry) => entry.code)
+    expect(codes).toContain(live.code)
+    expect(codes).not.toContain(dead.code)
   })
 })
 

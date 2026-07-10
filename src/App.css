@@ -223,6 +223,18 @@ button.danger {
 
 /* --- Table ----------------------------------------------------------------- */
 
+.table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.table-head h2 {
+  margin: 0;
+}
+
 .table-wrap {
   overflow-x: auto;
   border: 1px solid var(--border);

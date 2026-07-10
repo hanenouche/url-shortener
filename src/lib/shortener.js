@@ -210,6 +210,15 @@ export function remove(code) {
   save(store)
 }
 
+// purge every expired entry in one go
+export function removeExpired() {
+  const store = load()
+  for (const code of Object.keys(store)) {
+    if (isExpired(store[code])) delete store[code]
+  }
+  save(store)
+}
+
 // hash based so it also works on static hosting
 export function buildShortUrl(code) {
   const { origin, pathname } = window.location
