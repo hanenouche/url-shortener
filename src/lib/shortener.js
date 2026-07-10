@@ -215,3 +215,13 @@ export function buildShortUrl(code) {
   const { origin, pathname } = window.location
   return `${origin}${pathname}#/${code}`
 }
+
+// storage events only fire in OTHER tabs, so this is cross-tab sync.
+// key === null means localStorage.clear()
+export function onExternalChange(callback) {
+  const handler = (event) => {
+    if (event.key === STORAGE_KEY || event.key === null) callback()
+  }
+  window.addEventListener('storage', handler)
+  return () => window.removeEventListener('storage', handler)
+}

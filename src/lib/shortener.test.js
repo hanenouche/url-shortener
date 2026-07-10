@@ -7,6 +7,7 @@ import {
   remove,
   extractCode,
   buildShortUrl,
+  onExternalChange,
   ERRORS,
   ShortenerError,
 } from '@/lib/shortener.js'
@@ -191,5 +192,23 @@ describe('extractCode', () => {
 describe('buildShortUrl', () => {
   it('builds a hash URL on the current origin', () => {
     expect(buildShortUrl('abc')).toBe('http://localhost:5173/#/abc')
+  })
+})
+
+describe('onExternalChange', () => {
+  it('fires only for our storage key (or a full clear)', () => {
+    const listeners = {}
+    globalThis.window.addEventListener = (type, fn) => {
+      listeners[type] = fn
+    }
+    globalThis.window.removeEventListener = () => {}
+
+    let calls = 0
+    const off = onExternalChange(() => calls++)
+    listeners.storage({ key: 'url-shortener:links' })
+    listeners.storage({ key: 'some-other-app' })
+    listeners.storage({ key: null }) // localStorage.clear()
+    expect(calls).toBe(2)
+    off()
   })
 })

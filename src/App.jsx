@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link2, Moon, Sun } from 'lucide-react'
 import ShortenForm from '@/components/ShortenForm.jsx'
 import RetrieveForm from '@/components/RetrieveForm.jsx'
@@ -6,7 +6,7 @@ import LinksTable from '@/components/LinksTable.jsx'
 import RedirectPage from '@/components/RedirectPage.jsx'
 import { useHashCode } from '@/hooks/useHashRoute.js'
 import { useTheme } from '@/hooks/useTheme.js'
-import { getAll } from '@/lib/shortener.js'
+import { getAll, onExternalChange } from '@/lib/shortener.js'
 import '@/App.css'
 
 export default function App() {
@@ -15,6 +15,9 @@ export default function App() {
   const { theme, toggle } = useTheme()
 
   const refresh = () => setLinks(getAll())
+
+  // another tab changed the store -> refresh the table
+  useEffect(() => onExternalChange(() => setLinks(getAll())), [])
 
   if (redirectCode) return <RedirectPage code={redirectCode} />
 
