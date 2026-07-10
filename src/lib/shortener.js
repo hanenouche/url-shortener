@@ -117,11 +117,19 @@ export function shorten(input, { expiresInDays = null } = {}) {
   const existing = Object.values(store).find(
     (entry) => entry.longUrl === longUrl && !isExpired(entry),
   )
-  if (existing) return { ...existing, reused: true }
+  if (existing) {
+    // apply the expiry chosen this time instead of silently keeping the old one
+    existing.expiresAt = expiresInDays
+      ? Date.now() + expiresInDays * MS_PER_DAY
+      : null
+    save(store)
+    return { ...existing, reused: true }
+  }
 
   let code = generateCode()
   let attempts = 0
-  while (store[code]) {
+  // hasOwn, not store[code]: "constructor" etc. would hit Object.prototype
+  while (Object.hasOwn(store, code)) {
     attempts += 1
     // 62^7 ~ 3.5 trillion codes so this never loops in practice,
     // but retry anyway and go to 8 chars if it somehow keeps colliding
@@ -155,10 +163,10 @@ export function resolve(input) {
   }
 
   const store = load()
-  const entry = store[code]
-  if (!entry) {
+  if (!Object.hasOwn(store, code)) {
     throw new ShortenerError(ERRORS.NOT_FOUND, `No link found for "${code}".`)
   }
+  const entry = store[code]
   if (isExpired(entry)) {
     throw new ShortenerError(
       ERRORS.EXPIRED,
@@ -175,10 +183,17 @@ export function resolve(input) {
 // read-only, does not count an access
 export function getStats(input) {
   const code = extractCode(input)
-  const entry = load()[code]
-  if (!entry) {
+  if (!code) {
+    throw new ShortenerError(
+      ERRORS.NOT_FOUND,
+      'Please enter a short URL or code.',
+    )
+  }
+  const store = load()
+  if (!Object.hasOwn(store, code)) {
     throw new ShortenerError(ERRORS.NOT_FOUND, `No link found for "${code}".`)
   }
+  const entry = store[code]
   return { ...entry, expired: isExpired(entry) }
 }
 

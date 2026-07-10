@@ -80,6 +80,16 @@ describe('shorten', () => {
     expect(() => shorten('file:///etc/passwd')).toThrowError(ShortenerError)
   })
 
+  it('applies the newly chosen expiry when reusing a code', () => {
+    const first = shorten('https://example.com/reuse-expiry')
+    expect(first.expiresAt).toBeNull()
+    const second = shorten('https://example.com/reuse-expiry', {
+      expiresInDays: 7,
+    })
+    expect(second.code).toBe(first.code)
+    expect(second.expiresAt).not.toBeNull()
+  })
+
   it('gives distinct codes to distinct URLs', () => {
     const codes = new Set()
     for (let i = 0; i < 200; i++) {
@@ -112,6 +122,18 @@ describe('resolve', () => {
     }
   })
 
+  it('does not leak Object.prototype properties as entries', () => {
+    // store is a plain JSON.parse object, so store["constructor"] is truthy
+    for (const name of ['constructor', 'toString', 'valueOf']) {
+      try {
+        resolve(name)
+        expect.unreachable('should have thrown')
+      } catch (err) {
+        expect(err.code).toBe(ERRORS.NOT_FOUND)
+      }
+    }
+  })
+
   it('throws EXPIRED for an expired link and stops counting', () => {
     // negative expiry puts the deadline in the past
     const { code } = shorten('https://example.com/old', { expiresInDays: -1 })
@@ -126,6 +148,10 @@ describe('resolve', () => {
 })
 
 describe('getStats', () => {
+  it('rejects empty input', () => {
+    expect(() => getStats('')).toThrowError(ShortenerError)
+  })
+
   it('reads stats without counting as an access', () => {
     const { code } = shorten('https://example.com/stats')
     resolve(code)
