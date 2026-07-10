@@ -49,7 +49,7 @@ export default function App() {
 
       <div className="panels">
         <ShortenForm onChange={refresh} />
-        <RetrieveForm onChange={refresh} />
+        <RetrieveForm />
       </div>
 
       <LinksTable links={links} onChange={refresh} />

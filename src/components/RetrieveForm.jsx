@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { MousePointerClick, Search } from 'lucide-react'
-import { resolve, ShortenerError } from '@/lib/shortener.js'
+import { getStats, ShortenerError } from '@/lib/shortener.js'
 
-export default function RetrieveForm({ onChange }) {
+export default function RetrieveForm() {
   const [input, setInput] = useState('')
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
@@ -12,9 +12,9 @@ export default function RetrieveForm({ onChange }) {
     setError(null)
     setResult(null)
     try {
-      const entry = resolve(input)
+      // read-only lookup: checking a link shouldn't inflate its own stats
+      const entry = getStats(input)
       setResult(entry)
-      onChange()
     } catch (err) {
       setError(
         err instanceof ShortenerError ? err.message : 'Something went wrong.',
@@ -48,6 +48,7 @@ export default function RetrieveForm({ onChange }) {
           <span className="hint">
             <MousePointerClick size={14} />
             {result.clicks} access{result.clicks === 1 ? '' : 'es'}
+            {result.expired && ' (expired)'}
           </span>
         </div>
       )}
